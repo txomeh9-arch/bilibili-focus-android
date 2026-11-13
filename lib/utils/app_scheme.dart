@@ -21,6 +21,7 @@ import 'package:PiliPlus/pages/video/reply_reply/view.dart';
 import 'package:PiliPlus/utils/bili_utils.dart';
 import 'package:PiliPlus/utils/desktop/window_controller.dart';
 import 'package:PiliPlus/utils/id_utils.dart';
+import 'package:PiliPlus/utils/focus_policy.dart';
 import 'package:PiliPlus/utils/page_utils.dart';
 import 'package:PiliPlus/utils/parse_string.dart';
 import 'package:PiliPlus/utils/platform_utils.dart';
@@ -111,6 +112,12 @@ abstract final class PiliScheme {
     int? oid,
   }) async {
     // if (kDebugMode) debugPrint('onAppLink: $uri');
+
+    final searchTerm = focusVideoSearchTerm(uri);
+    if (searchTerm != null) {
+      Get.toNamed('/search', parameters: {'text': searchTerm});
+      return true;
+    }
 
     final String scheme = uri.scheme;
     final String host = uri.host;
@@ -499,6 +506,12 @@ abstract final class PiliScheme {
         uri = Uri.parse(redirectUrl);
         host = uri.host;
       }
+    }
+
+    final searchTerm = focusVideoSearchTerm(uri);
+    if (searchTerm != null) {
+      Get.toNamed('/search', parameters: {'text': searchTerm});
+      return true;
     }
 
     if (!host.contains(bilibili)) {

@@ -401,7 +401,7 @@ List<SettingsModel> get playSettings => [
     title: '播放顺序',
     leading: const Icon(Icons.repeat),
     value: () => Pref.playRepeat,
-    items: PlayRepeat.values,
+    items: const [PlayRepeat.pause, PlayRepeat.listOrder],
     onSelected: (value, setState) => GStorage.video
         .put(VideoBoxKey.playRepeat, value.index)
         .whenComplete(setState),

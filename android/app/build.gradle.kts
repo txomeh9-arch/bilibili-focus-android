@@ -28,7 +28,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.piliplus"
+        applicationId = "io.github.txomeh9.bilifocus"
         minSdk = flutter.minSdkVersion
         targetSdk = 37
         versionCode = flutter.versionCode
@@ -61,10 +61,13 @@ android {
     }
 
     buildTypes {
-        all {
-            signingConfig = config ?: signingConfigs["debug"]
-        }
         release {
+            if (config == null && gradle.startParameter.taskNames.any {
+                    it.contains("release", ignoreCase = true)
+                }) {
+                throw GradleException("Release signing key is required")
+            }
+            signingConfig = config
             if (project.hasProperty("dev")) {
                 applicationIdSuffix = ".dev"
                 resValue(

@@ -679,7 +679,8 @@ class UgcIntroController extends CommonIntroController with ReloadMixin {
         episodes.addAll(pages);
       } else if (videoDetailCtr.isPlayAll) {
         episodes.addAll(videoDetailCtr.mediaList);
-      } else if (videoDetail.ugcSeason != null) {
+      } else if (videoDetail.ugcSeason != null &&
+          videoDetailCtr.args['focusSelectedSeason'] == true) {
         for (final section in videoDetail.ugcSeason!.sections!) {
           episodes.addAll(section.episodes!);
         }
@@ -703,6 +704,8 @@ class UgcIntroController extends CommonIntroController with ReloadMixin {
       final targetCid = skipPart ? seasonCid : this.cid.rawValue;
       final currIndex = episodes.indexWhere((e) => e.cid == targetCid);
 
+      if (currIndex < 0) return false;
+
       int nextIndex = currIndex + 1;
 
       if (!isPart &&
@@ -714,7 +717,9 @@ class UgcIntroController extends CommonIntroController with ReloadMixin {
       // 列表循环
       if (nextIndex >= episodes.length) {
         if (isPart &&
-            (videoDetailCtr.isPlayAll || videoDetail.ugcSeason != null)) {
+            (videoDetailCtr.isPlayAll ||
+                (videoDetail.ugcSeason != null &&
+                    videoDetailCtr.args['focusSelectedSeason'] == true))) {
           return nextPlay(skipPart: true);
         }
 
@@ -729,12 +734,9 @@ class UgcIntroController extends CommonIntroController with ReloadMixin {
       }
 
       int? cid = episodes[nextIndex].cid;
-      while (cid == null) {
-        nextIndex++;
-        if (nextIndex >= episodes.length) {
-          return false;
-        }
-        cid = episodes[nextIndex].cid;
+      if (cid == null) {
+        SmartDialog.showToast('下一条视频不可用');
+        return false;
       }
 
       if (cid != this.cid.value) {

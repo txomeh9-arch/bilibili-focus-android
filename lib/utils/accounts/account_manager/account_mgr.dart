@@ -13,7 +13,6 @@ import 'package:PiliPlus/utils/platform_utils.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -173,12 +172,11 @@ class AccountManager extends Interceptor {
       'site/getCoin',
     ];
     String url = err.requestOptions.uri.toString();
-    if (kDebugMode) debugPrint('🌹🌹ApiInterceptor: $url\n$err');
     if (skipShow.any(url.contains) ||
         (url.contains('skipSegments') && err.requestOptions.method == 'GET')) {
       // skip
     } else {
-      dioError(err).then((res) => SmartDialog.showToast(res + url));
+      dioError(err).then(SmartDialog.showToast);
     }
   }
 
@@ -272,7 +270,7 @@ class AccountManager extends Interceptor {
         } catch (_) {
           desc = '';
         }
-        return '$desc网络异常 ${error.error}';
+        return '$desc网络异常，请稍后重试';
     }
   }
 }

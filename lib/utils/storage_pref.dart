@@ -908,10 +908,13 @@ abstract final class Pref {
       _setting.get(SettingBoxKey.defaultToastOp, defaultValue: 1.0);
 
   static PlayRepeat get playRepeat =>
-      PlayRepeat.values[_video.get(
-        VideoBoxKey.playRepeat,
-        defaultValue: PlayRepeat.pause.index,
-      )];
+      _video.get(
+            VideoBoxKey.playRepeat,
+            defaultValue: PlayRepeat.pause.index,
+          ) ==
+          PlayRepeat.listOrder.index
+      ? PlayRepeat.listOrder
+      : PlayRepeat.pause;
 
   static int get cacheVideoFit =>
       _video.get(VideoBoxKey.cacheVideoFit, defaultValue: 1);

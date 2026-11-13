@@ -16,6 +16,7 @@ import 'package:PiliPlus/utils/date_utils.dart';
 import 'package:PiliPlus/utils/duration_utils.dart';
 import 'package:PiliPlus/utils/page_utils.dart';
 import 'package:PiliPlus/utils/platform_utils.dart';
+import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -37,7 +38,7 @@ class FavVideoCardH extends StatelessWidget {
   void _onTap() {
     // 0/4/16/...: 正常；9: up自己删除；1: 其他原因删除
     if (const [1, 9].contains(item.attr)) {
-      Get.toNamed('/member?mid=${item.upper?.mid}');
+      SmartDialog.showToast('视频已失效或无法访问');
       return;
     }
 

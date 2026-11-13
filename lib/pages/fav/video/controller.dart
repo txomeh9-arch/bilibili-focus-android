@@ -4,9 +4,10 @@ import 'package:PiliPlus/models_new/fav/fav_folder/data.dart';
 import 'package:PiliPlus/models_new/fav/fav_folder/list.dart';
 import 'package:PiliPlus/pages/common/common_list_controller.dart';
 import 'package:PiliPlus/utils/accounts.dart';
+import 'package:PiliPlus/utils/accounts/account.dart';
 
 class FavController extends CommonListController<FavFolderData, FavFolderInfo> {
-  late final account = Accounts.main;
+  Account get account => Accounts.main;
 
   @override
   void onInit() {

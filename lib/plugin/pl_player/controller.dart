@@ -25,6 +25,7 @@ import 'package:PiliPlus/plugin/pl_player/models/duration.dart';
 import 'package:PiliPlus/plugin/pl_player/models/fullscreen_mode.dart';
 import 'package:PiliPlus/plugin/pl_player/models/heart_beat_type.dart';
 import 'package:PiliPlus/plugin/pl_player/models/play_repeat.dart';
+import 'package:PiliPlus/utils/focus_policy.dart';
 import 'package:PiliPlus/plugin/pl_player/models/play_status.dart';
 import 'package:PiliPlus/plugin/pl_player/models/video_fit_type.dart';
 import 'package:PiliPlus/plugin/pl_player/utils/danmaku_options.dart';
@@ -453,7 +454,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
 
   late final horizontalSeasonPanel = Pref.horizontalSeasonPanel;
   late final preInitPlayer = Pref.preInitPlayer;
-  late final showRelatedVideo = Pref.showRelatedVideo;
+  final showRelatedVideo = false;
   late final showVideoReply = Pref.showVideoReply;
   late final showBangumiReply = Pref.showBangumiReply;
   late final reverseFromFirst = Pref.reverseFromFirst;
@@ -1637,8 +1638,8 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
   }
 
   void setPlayRepeat(PlayRepeat type) {
-    playRepeat = type;
-    if (!tempPlayerConf) video.put(VideoBoxKey.playRepeat, type.index);
+    playRepeat = focusPlayMode(type);
+    video.put(VideoBoxKey.playRepeat, playRepeat.index);
   }
 
   void putSubtitleSettings() {

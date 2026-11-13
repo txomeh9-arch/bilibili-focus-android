@@ -263,15 +263,8 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
       if (shutdownTimerService.isWaiting) {
         shutdownTimerService.handleWaiting();
       } else {
-        switch (plPlayerController!.playRepeat) {
-          case PlayRepeat.singleCycle:
-            exitFlag = false;
-            plPlayerController!.play(repeat: true);
-          case PlayRepeat.listOrder:
-          case PlayRepeat.listCycle:
-          case PlayRepeat.autoPlayRelated:
-            exitFlag = !introController.nextPlay();
-          case PlayRepeat.pause:
+        if (plPlayerController!.playRepeat == PlayRepeat.listOrder) {
+          exitFlag = !introController.nextPlay();
         }
       }
 

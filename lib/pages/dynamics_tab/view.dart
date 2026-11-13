@@ -85,7 +85,22 @@ class _DynamicsTabPageState extends State<DynamicsTabPage>
                           _itemBuilder(response, index),
                       itemCount: response.length,
                     )
-            : HttpError(onReload: controller.onReload),
+            : SliverToBoxAdapter(
+                child: Center(
+                  child: controller.isEnd
+                      ? const Padding(
+                          padding: EdgeInsets.all(24),
+                          child: Text('暂无关注投稿'),
+                        )
+                      : TextButton(
+                          onPressed: () async {
+                            await controller.onLoadMore();
+                            controller.loadingState.refresh();
+                          },
+                          child: const Text('加载更多'),
+                        ),
+                ),
+              ),
       Error(:final errMsg) => HttpError(
         errMsg: errMsg,
         onReload: controller.onReload,

@@ -7,6 +7,7 @@ import 'package:PiliPlus/models/model_avatar.dart';
 import 'package:PiliPlus/models/model_owner.dart';
 import 'package:PiliPlus/models_new/live/live_feed_index/watched_show.dart';
 import 'package:PiliPlus/utils/extension/iterable_ext.dart';
+import 'package:PiliPlus/utils/focus_policy.dart';
 import 'package:PiliPlus/utils/parse_bool.dart';
 import 'package:PiliPlus/utils/parse_int.dart';
 import 'package:PiliPlus/utils/parse_string.dart';
@@ -61,6 +62,20 @@ class DynamicsDataModel {
           type != DynamicsTabType.up && tempBannedList?.isNotEmpty == true;
       for (final e in list) {
         DynamicItemModel item = DynamicItemModel.fromJson(e);
+        // The video feed may contain reposts or injected items. Only keep
+        // original archive posts from the user's followed creators.
+        if (type == DynamicsTabType.video &&
+            !isFocusFeedPost(
+              type: item.type,
+              isRepost: item.orig != null,
+              hasArchive: item.modules.moduleDynamic?.major?.archive != null,
+              following: switch (e['modules']?['module_author']?['following']) {
+                final bool value => value,
+                _ => null,
+              },
+            )) {
+          continue;
+        }
         if (antiGoodsDyn &&
             (item.orig?.modules.moduleDynamic?.additional?.type ==
                     'ADDITIONAL_TYPE_GOODS' ||

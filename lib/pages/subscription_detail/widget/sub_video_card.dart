@@ -44,6 +44,7 @@ class SubVideoCardH extends StatelessWidget {
               cover: videoItem.cover,
               title: videoItem.title,
               dimension: res!.dimension,
+              extraArguments: {'focusSelectedSeason': true},
             );
           }
         },

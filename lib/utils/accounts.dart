@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:PiliPlus/http/init.dart';
 import 'package:PiliPlus/models/common/account_type.dart';
 import 'package:PiliPlus/pages/mine/controller.dart';
@@ -5,6 +7,7 @@ import 'package:PiliPlus/utils/accounts/account.dart';
 import 'package:PiliPlus/utils/login_utils.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:hive_ce/hive.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 abstract final class Accounts {
   static late final Box<LoginAccount> account;
@@ -27,8 +30,20 @@ abstract final class Accounts {
   // static set main(Account account) => set(AccountType.main, account);
 
   static Future<void> init() async {
+    const secureStorage = FlutterSecureStorage();
+    const keyName = 'focus_account_hive_key';
+    var encodedKey = await secureStorage.read(key: keyName);
+    if (encodedKey == null) {
+      encodedKey = base64Encode(Hive.generateSecureKey());
+      await secureStorage.write(key: keyName, value: encodedKey);
+    }
+    final key = base64Decode(encodedKey);
+    if (key.length != 32) {
+      throw StateError('Invalid account encryption key');
+    }
     account = await Hive.openBox(
       'account',
+      encryptionCipher: HiveAesCipher(key),
       compactionStrategy: (int entries, int deletedEntries) {
         return deletedEntries > 2;
       },

@@ -32,10 +32,10 @@ class _FavPageState extends State<FavPage> with SingleTickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-    int initialIndex = Get.arguments is int ? Get.arguments as int : 0;
+    const int initialIndex = 0;
     _showVideoFavMenu = (initialIndex == 0).obs;
     _tabController = TabController(
-      length: FavTabType.values.length,
+      length: 1,
       vsync: this,
       initialIndex: initialIndex,
     );
@@ -134,7 +134,7 @@ class _FavPageState extends State<FavPage> with SingleTickerProviderStateMixin {
               controller: _tabController,
               isScrollable: true,
               tabAlignment: TabAlignment.start,
-              tabs: FavTabType.values
+              tabs: const [FavTabType.video]
                   .map((item) => Tab(text: item.title))
                   .toList(),
               onTap: (index) {
@@ -161,7 +161,9 @@ class _FavPageState extends State<FavPage> with SingleTickerProviderStateMixin {
             Expanded(
               child: tabBarView(
                 controller: _tabController,
-                children: FavTabType.values.map((item) => item.page).toList(),
+                children: const [FavTabType.video]
+                    .map((item) => item.page)
+                    .toList(),
               ),
             ),
           ],

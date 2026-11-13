@@ -38,6 +38,7 @@ abstract final class DynamicsHttp {
     String? offset,
     Set<int>? tempBannedList,
     DynamicsTabType type = .all,
+    int filteredPages = 0,
   }) async {
     Map<String, dynamic> data = {
       if (type == .up) 'host_mid': hostMid else 'type': type.name,
@@ -53,12 +54,16 @@ abstract final class DynamicsHttp {
           type: type,
           tempBannedList: tempBannedList,
         );
-        if (data.loadNext == true) {
+        if (data.loadNext == true &&
+            filteredPages < 4 &&
+            data.offset != null &&
+            data.offset != offset) {
           return await followDynamic(
             type: type,
             offset: data.offset,
             hostMid: hostMid,
             tempBannedList: tempBannedList,
+            filteredPages: filteredPages + 1,
           );
         }
         return Success(data);

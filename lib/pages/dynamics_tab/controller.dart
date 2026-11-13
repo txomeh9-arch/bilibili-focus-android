@@ -19,6 +19,9 @@ class DynamicsTabController
 
   String? offset;
 
+  @override
+  bool get endIfNullOrEmpty => false;
+
   late final mainController = Get.find<MainController>();
   final dynamicsController = Get.find<DynamicsController>();
 
@@ -40,7 +43,8 @@ class DynamicsTabController
   @override
   List<DynamicItemModel>? getDataList(DynamicsDataModel response) {
     offset = response.offset;
-    return response.items;
+    isEnd = response.hasMore != true;
+    return response.items ?? [];
   }
 
   @override

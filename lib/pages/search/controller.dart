@@ -10,6 +10,7 @@ import 'package:PiliPlus/utils/app_scheme.dart';
 import 'package:PiliPlus/utils/extension/get_ext.dart';
 import 'package:PiliPlus/utils/extension/string_ext.dart';
 import 'package:PiliPlus/utils/id_utils.dart';
+import 'package:PiliPlus/utils/focus_policy.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:get/get.dart';
@@ -59,9 +60,9 @@ class BaseSearchController extends GetxController {
   late final Rx<LoadingState<SearchTrendingData>> trendingState;
 
   final recordSearchHistory = Pref.recordSearchHistory.obs;
-  final searchSuggestion = Pref.searchSuggestion;
-  final enableTrending = Pref.enableTrending;
-  final enableSearchRcmd = Pref.enableSearchRcmd;
+  final searchSuggestion = false;
+  final enableTrending = false;
+  final enableSearchRcmd = false;
 
   @override
   void onInit() {
@@ -118,7 +119,7 @@ class SSearchController extends GetxController
   void onInit() {
     super.onInit();
     final params = Get.parameters;
-    hintText = params['hintText'];
+    hintText = null;
     final text = params['text'];
     if (text != null) {
       controller.text = text;
@@ -170,9 +171,14 @@ class SSearchController extends GetxController
       validateUid();
     }
 
-    final text = controller.text;
-
-    if (await PiliScheme.routePushFromUrl(text, selfHandle: true)) {
+    var text = controller.text;
+    final directLink = Uri.tryParse(text);
+    final videoTerm = directLink == null
+        ? null
+        : focusVideoSearchTerm(directLink);
+    if (videoTerm != null) {
+      text = controller.text = videoTerm;
+    } else if (await PiliScheme.routePushFromUrl(text, selfHandle: true)) {
       return;
     }
 

@@ -1,10 +1,6 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:PiliPlus/common/widgets/view_safe_area.dart';
-import 'package:PiliPlus/grpc/dyn.dart';
-import 'package:PiliPlus/http/loading_state.dart';
-import 'package:PiliPlus/http/msg.dart';
 import 'package:PiliPlus/models/common/dynamic/dynamic_badge_mode.dart';
 import 'package:PiliPlus/models/common/home_tab_type.dart';
 import 'package:PiliPlus/models/common/msg/msg_unread_type.dart';
@@ -14,13 +10,8 @@ import 'package:PiliPlus/pages/home/controller.dart';
 import 'package:PiliPlus/pages/mine/view.dart';
 import 'package:PiliPlus/services/account_service.dart';
 import 'package:PiliPlus/utils/extension/get_ext.dart';
-import 'package:PiliPlus/utils/extension/iterable_ext.dart';
 import 'package:PiliPlus/utils/feed_back.dart';
-import 'package:PiliPlus/utils/storage.dart';
-import 'package:PiliPlus/utils/storage_key.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
-import 'package:PiliPlus/utils/update.dart';
-import 'package:collection/collection.dart';
 import 'package:easy_debounce/easy_throttle.dart';
 import 'package:get/get.dart';
 import 'package:material_ui/material_ui.dart';
@@ -44,7 +35,6 @@ class MainController extends GetxController
   late DynamicBadgeMode dynamicBadgeMode;
   late bool checkDynamic = Pref.checkDynamic;
   late int dynamicPeriod = Pref.dynamicPeriod * 60 * 1000;
-  late int _lastCheckDynamicAt = 0;
   late bool hasDyn = false;
   late final dynamicController = Get.putOrFind(DynamicsController.new);
 
@@ -55,7 +45,6 @@ class MainController extends GetxController
   late DynamicBadgeMode msgBadgeMode = Pref.msgBadgeMode;
   late Set<MsgUnReadType> msgUnReadTypes = Pref.msgUnReadTypeV2;
   late final RxnString msgUnReadCount = RxnString(null);
-  late int lastCheckUnreadAt = 0;
 
   final enableMYBar = Pref.enableMYBar;
   final floatingNavBar = Pref.floatingNavBar;
@@ -66,16 +55,11 @@ class MainController extends GetxController
 
   late bool directExitOnBack = Pref.directExitOnBack;
 
-  static const _period = 5 * 60 * 1000;
   late int _lastSelectTime = 0;
 
   @override
   void onInit() {
     super.onInit();
-    if (Pref.autoUpdate) {
-      Update.checkUpdate();
-    }
-
     setNavBarConfig();
 
     controller = mainTabBarView
@@ -97,179 +81,36 @@ class MainController extends GetxController
       }
     }
 
-    dynamicBadgeMode = Pref.dynamicBadgeMode;
+    dynamicBadgeMode = DynamicBadgeMode.hidden;
+    msgBadgeMode = DynamicBadgeMode.hidden;
 
     hasDyn = navigationBars.contains(NavigationBarType.dynamics);
-    if (dynamicBadgeMode != DynamicBadgeMode.hidden) {
-      if (hasDyn && navigationBars[selectedIndex.value] != .dynamics) {
-        if (checkDynamic) {
-          _lastCheckDynamicAt = DateTime.now().millisecondsSinceEpoch;
-        }
-        getUnreadDynamic();
-      }
-    }
-
     hasHome = navigationBars.contains(NavigationBarType.home);
-    if (msgBadgeMode != DynamicBadgeMode.hidden) {
-      if (hasHome) {
-        lastCheckUnreadAt = DateTime.now().millisecondsSinceEpoch;
-        queryUnreadMsg();
-      }
-    }
-  }
-
-  Future<int> _msgUnread() async {
-    if (msgUnReadTypes.contains(MsgUnReadType.pm)) {
-      final res = await MsgHttp.msgUnread();
-      if (res case Success(:final response)) {
-        return response.followUnread +
-            response.unfollowUnread +
-            response.bizMsgFollowUnread +
-            response.bizMsgUnfollowUnread +
-            response.unfollowPushMsg +
-            response.customUnread;
-      }
-    }
-    return 0;
-  }
-
-  Future<int> _msgFeedUnread() async {
-    int count = 0;
-    final remainTypes = Set<MsgUnReadType>.from(msgUnReadTypes)
-      ..remove(MsgUnReadType.pm);
-    if (remainTypes.isNotEmpty) {
-      final res = await MsgHttp.msgFeedUnread();
-      if (res case Success(:final response)) {
-        for (final item in remainTypes) {
-          switch (item) {
-            case MsgUnReadType.pm:
-              break;
-            case MsgUnReadType.reply:
-              count += response.reply;
-              break;
-            case MsgUnReadType.at:
-              count += response.at;
-              break;
-            case MsgUnReadType.like:
-              if (!disableLikeMsg) count += response.like;
-              break;
-            case MsgUnReadType.sysMsg:
-              count += response.sysMsg;
-              break;
-          }
-        }
-      }
-    }
-    return count;
   }
 
   void clearUnreadMsg() {
     msgUnReadCount.value = null;
   }
 
-  Future<void> queryUnreadMsg([bool isChangeType = false]) async {
-    if (!accountService.isLogin.value ||
-        !hasHome ||
-        msgUnReadTypes.isEmpty ||
-        msgBadgeMode == DynamicBadgeMode.hidden) {
-      clearUnreadMsg();
-      return;
-    }
+  Future<void> queryUnreadMsg([bool isChangeType = false]) async {}
 
-    final res = await Future.wait([_msgUnread(), _msgFeedUnread()]);
-
-    final count = res.sum;
-
-    final countStr = count == 0
-        ? null
-        : count > 99
-        ? '99+'
-        : count.toString();
-    if (msgUnReadCount.value == countStr) {
-      if (isChangeType) {
-        msgUnReadCount.refresh();
-      }
-    } else {
-      msgUnReadCount.value = countStr;
-    }
-  }
-
-  void getUnreadDynamic() {
-    if (!accountService.isLogin.value || !hasDyn) {
-      return;
-    }
-    DynGrpc.dynRed().then((res) {
-      if (res != null) {
-        setDynCount(res);
-      }
-    });
-  }
+  void getUnreadDynamic() {}
 
   void setDynCount([int count = 0]) {
     if (!hasDyn) return;
     dynCount.value = count;
   }
 
-  void checkUnreadDynamic() {
-    if (!hasDyn ||
-        !accountService.isLogin.value ||
-        dynamicBadgeMode == DynamicBadgeMode.hidden ||
-        !checkDynamic) {
-      return;
-    }
-    int now = DateTime.now().millisecondsSinceEpoch;
-    if (now - _lastCheckDynamicAt >= dynamicPeriod) {
-      _lastCheckDynamicAt = now;
-      getUnreadDynamic();
-    }
-  }
+  void checkUnreadDynamic() {}
 
   void setNavBarConfig() {
-    List<int>? navBarSort =
-        (GStorage.setting.get(SettingBoxKey.navBarSort) as List?)?.fromCast();
-    late final List<NavigationBarType> navigationBars;
-    if (navBarSort == null || navBarSort.isEmpty) {
-      navigationBars = NavigationBarType.values;
-    } else {
-      navigationBars = navBarSort
-          .map(NavigationBarType.values.elementAt)
-          .toList();
-    }
-    this.navigationBars = navigationBars;
-    final defPage = Pref.defaultHomePage;
-    selectedIndex.value = math.max(0, navigationBars.indexOf(defPage));
+    navigationBars = [NavigationBarType.dynamics, NavigationBarType.mine];
+    selectedIndex.value = 0;
   }
 
-  void checkDefaultSearch([bool shouldCheck = false]) {
-    if (hasHome && homeController.enableSearchWord) {
-      if (shouldCheck &&
-          navigationBars[selectedIndex.value] != NavigationBarType.home) {
-        return;
-      }
-      int now = DateTime.now().millisecondsSinceEpoch;
-      if (now - homeController.lateCheckSearchAt >= _period) {
-        homeController
-          ..lateCheckSearchAt = now
-          ..querySearchDefault();
-      }
-    }
-  }
+  void checkDefaultSearch([bool shouldCheck = false]) {}
 
-  void checkUnread([bool shouldCheck = false]) {
-    if (accountService.isLogin.value &&
-        hasHome &&
-        msgBadgeMode != DynamicBadgeMode.hidden) {
-      if (shouldCheck &&
-          navigationBars[selectedIndex.value] != NavigationBarType.home) {
-        return;
-      }
-      int now = DateTime.now().millisecondsSinceEpoch;
-      if (now - lastCheckUnreadAt >= _period) {
-        lastCheckUnreadAt = now;
-        queryUnreadMsg();
-      }
-    }
-  }
+  void checkUnread([bool shouldCheck = false]) {}
 
   int? _mineIndex;
   void toMinePage() {
@@ -353,11 +194,6 @@ class MainController extends GetxController
 
   @override
   void onChangeAccount(bool isLogin) {
-    if (isLogin) {
-      queryUnreadMsg();
-      getUnreadDynamic();
-    } else {
-      setDynCount();
-    }
+    setDynCount();
   }
 }

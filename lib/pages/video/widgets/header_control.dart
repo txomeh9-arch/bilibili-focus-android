@@ -667,7 +667,9 @@ class HeaderControlState extends State<HeaderControl>
                     final value = plPlayerController.playRepeat;
                     return (value, value.label);
                   },
-                  itemBuilder: (_) => enumItemBuilder(PlayRepeat.values),
+                  itemBuilder: (_) => enumItemBuilder(
+                    const [PlayRepeat.pause, PlayRepeat.listOrder],
+                  ),
                   onSelected: (value, setState) {
                     plPlayerController.setPlayRepeat(value);
                     setState();

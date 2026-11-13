@@ -75,6 +75,7 @@ app.*.map.json
 **/android/**/GeneratedPluginRegistrant.java
 **/android/key.properties
 *.jks
+*.p12
 
 # iOS/XCode related
 **/ios/**/*.mode1v3
@@ -150,3 +151,6 @@ pili_release.json
 dist
 
 test*
+!test/
+test/*
+!test/focus_policy_test.dart
