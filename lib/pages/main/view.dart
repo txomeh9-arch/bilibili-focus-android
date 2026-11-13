@@ -4,6 +4,7 @@ import 'package:PiliPlus/pages/fav/view.dart';
 import 'package:PiliPlus/pages/main/controller.dart';
 import 'package:PiliPlus/pages/search/view.dart';
 import 'package:PiliPlus/pages/subscription/view.dart';
+import 'package:PiliPlus/plugin/pl_player/controller.dart';
 import 'package:PiliPlus/plugin/pl_player/models/play_repeat.dart';
 import 'package:PiliPlus/services/account_service.dart';
 import 'package:PiliPlus/utils/accounts.dart';
@@ -114,10 +115,13 @@ class _FocusSettingsPageState extends State<FocusSettingsPage> {
           value: continuous,
           onChanged: (value) {
             setState(() => continuous = value);
-            GStorage.video.put(
-              VideoBoxKey.playRepeat,
-              (value ? PlayRepeat.listOrder : PlayRepeat.pause).index,
-            );
+            final mode = value ? PlayRepeat.listOrder : PlayRepeat.pause;
+            final player = PlPlayerController.instance;
+            if (player != null) {
+              player.setPlayRepeat(mode);
+            } else {
+              GStorage.video.put(VideoBoxKey.playRepeat, mode.index);
+            }
           },
         ),
         ListTile(

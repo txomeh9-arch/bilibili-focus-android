@@ -45,6 +45,8 @@ class MainController extends GetxController
   late DynamicBadgeMode msgBadgeMode = Pref.msgBadgeMode;
   late Set<MsgUnReadType> msgUnReadTypes = Pref.msgUnReadTypeV2;
   late final RxnString msgUnReadCount = RxnString(null);
+  // Retained for upstream pages that still compile, even though polling is off.
+  int lastCheckUnreadAt = 0;
 
   final enableMYBar = Pref.enableMYBar;
   final floatingNavBar = Pref.floatingNavBar;

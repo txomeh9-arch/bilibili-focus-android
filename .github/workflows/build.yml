@@ -36,6 +36,8 @@ jobs:
       - name: Apply upstream Android patches and resolve dependencies
         shell: pwsh
         run: lib/scripts/patch.ps1 android
+      - name: Analyze application
+        run: flutter analyze --no-pub --no-fatal-infos --no-fatal-warnings lib
       - name: Run focus policy tests
         run: flutter test test/focus_policy_test.dart
       - name: Configure release signing
