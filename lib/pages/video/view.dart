@@ -264,7 +264,21 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
         shutdownTimerService.handleWaiting();
       } else {
         if (plPlayerController!.playRepeat == PlayRepeat.listOrder) {
-          exitFlag = !introController.nextPlay();
+          final detail = videoDetailController.isUgc
+              ? ugcIntroController.videoDetail.value
+              : null;
+          final pages = detail?.pages;
+          final lastPart =
+              pages == null ||
+              pages.length < 2 ||
+              pages.last.cid == videoDetailController.cid.value;
+          if (detail != null &&
+              videoDetailController.args['focusSeasonId'] is int &&
+              lastPart) {
+            exitFlag = !await ugcIntroController.nextSubscribedVideo();
+          } else {
+            exitFlag = !introController.nextPlay();
+          }
         }
       }
 

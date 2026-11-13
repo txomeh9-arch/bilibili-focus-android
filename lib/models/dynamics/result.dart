@@ -76,6 +76,10 @@ class DynamicsDataModel {
             )) {
           continue;
         }
+        if (type == DynamicsTabType.video) {
+          item.modules.moduleDynamic?.additional = null;
+          item.modules.moduleInteraction = null;
+        }
         if (antiGoodsDyn &&
             (item.orig?.modules.moduleDynamic?.additional?.type ==
                     'ADDITIONAL_TYPE_GOODS' ||

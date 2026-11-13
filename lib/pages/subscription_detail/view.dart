@@ -9,6 +9,7 @@ import 'package:PiliPlus/pages/common/page_order/page_order_btn_mixin.dart';
 import 'package:PiliPlus/pages/subscription_detail/controller.dart';
 import 'package:PiliPlus/pages/subscription_detail/widget/sub_video_card.dart';
 import 'package:PiliPlus/utils/grid.dart';
+import 'package:PiliPlus/utils/focus_policy.dart';
 import 'package:PiliPlus/utils/num_utils.dart';
 import 'package:PiliPlus/utils/utils.dart';
 import 'package:get/get.dart';
@@ -95,6 +96,14 @@ class _SubDetailPageState extends State<SubDetailPage>
                   }
                   return SubVideoCardH(
                     videoItem: response[index],
+                    seasonId: controller.id,
+                    seasonPosition: focusSeasonPosition(
+                      itemIndex: index,
+                      count: controller.count,
+                      pageSize: controller.ps,
+                      descending: controller.pageDesc,
+                    ),
+                    seasonDescending: controller.pageDesc,
                   );
                 },
                 itemCount: response.length,

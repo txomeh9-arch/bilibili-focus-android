@@ -17,10 +17,16 @@ import 'package:material_ui/material_ui.dart';
 class SubVideoCardH extends StatelessWidget {
   final SubDetailItemModel videoItem;
   final int? searchType;
+  final int seasonId;
+  final ({int page, int index})? seasonPosition;
+  final bool seasonDescending;
 
   const SubVideoCardH({
     super.key,
     required this.videoItem,
+    required this.seasonId,
+    required this.seasonPosition,
+    required this.seasonDescending,
     this.searchType,
   });
 
@@ -44,7 +50,12 @@ class SubVideoCardH extends StatelessWidget {
               cover: videoItem.cover,
               title: videoItem.title,
               dimension: res!.dimension,
-              extraArguments: {'focusSelectedSeason': true},
+              extraArguments: {
+                'focusSeasonId': seasonId,
+                'focusSeasonPage': seasonPosition?.page,
+                'focusSeasonItemIndex': seasonPosition?.index,
+                'focusSeasonDescending': seasonDescending,
+              },
             );
           }
         },

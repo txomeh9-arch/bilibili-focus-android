@@ -38,6 +38,53 @@ void main() {
     }
   });
 
+  test('discovery endpoints are blocked while search and playback remain', () {
+    expect(isFocusBlockedPath('/x/web-interface/archive/related'), isTrue);
+    expect(isFocusBlockedPath('/x/v2/search/trending/ranking'), isTrue);
+    expect(isFocusBlockedPath('/x/v2/feed/index'), isTrue);
+    expect(isFocusBlockedPath('/x/web-interface/wbi/search/type'), isFalse);
+    expect(isFocusBlockedPath('/x/player/wbi/playurl'), isFalse);
+  });
+
+  test('subscription positions follow the order selected in the list', () {
+    expect(
+      focusSeasonPosition(
+        itemIndex: 0,
+        count: 35,
+        pageSize: 20,
+        descending: true,
+      ),
+      (page: 2, index: 0),
+    );
+    expect(
+      focusSeasonPosition(
+        itemIndex: 15,
+        count: 35,
+        pageSize: 20,
+        descending: true,
+      ),
+      (page: 1, index: 0),
+    );
+    expect(
+      focusSeasonPosition(
+        itemIndex: 20,
+        count: 35,
+        pageSize: 20,
+        descending: false,
+      ),
+      (page: 2, index: 0),
+    );
+    expect(
+      focusSeasonPosition(
+        itemIndex: 35,
+        count: 35,
+        pageSize: 20,
+        descending: false,
+      ),
+      isNull,
+    );
+  });
+
   test('direct video links become search terms, other hosts do not', () {
     expect(
       focusVideoSearchTerm(

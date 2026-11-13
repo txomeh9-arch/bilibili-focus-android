@@ -6,6 +6,7 @@ import 'package:PiliPlus/common/widgets/button/icon_button.dart';
 import 'package:PiliPlus/common/widgets/scroll_physics.dart' show ReloadMixin;
 import 'package:PiliPlus/http/api.dart';
 import 'package:PiliPlus/http/constants.dart';
+import 'package:PiliPlus/http/fav.dart';
 import 'package:PiliPlus/http/init.dart';
 import 'package:PiliPlus/http/loading_state.dart';
 import 'package:PiliPlus/http/member.dart';
@@ -679,11 +680,6 @@ class UgcIntroController extends CommonIntroController with ReloadMixin {
         episodes.addAll(pages);
       } else if (videoDetailCtr.isPlayAll) {
         episodes.addAll(videoDetailCtr.mediaList);
-      } else if (videoDetail.ugcSeason != null &&
-          videoDetailCtr.args['focusSelectedSeason'] == true) {
-        for (final section in videoDetail.ugcSeason!.sections!) {
-          episodes.addAll(section.episodes!);
-        }
       }
 
       final PlayRepeat playRepeat =
@@ -716,10 +712,7 @@ class UgcIntroController extends CommonIntroController with ReloadMixin {
 
       // 列表循环
       if (nextIndex >= episodes.length) {
-        if (isPart &&
-            (videoDetailCtr.isPlayAll ||
-                (videoDetail.ugcSeason != null &&
-                    videoDetailCtr.args['focusSelectedSeason'] == true))) {
+        if (isPart && videoDetailCtr.isPlayAll) {
           return nextPlay(skipPart: true);
         }
 
@@ -748,6 +741,81 @@ class UgcIntroController extends CommonIntroController with ReloadMixin {
     } catch (_) {
       return false;
     }
+  }
+
+  /// Continue only in the subscribed collection the user actually opened.
+  Future<bool> nextSubscribedVideo() async {
+    final args = videoDetailCtr.args;
+    final currentBvid = bvid;
+    final seasonId = args['focusSeasonId'];
+    var page = args['focusSeasonPage'];
+    final previousIndex = args['focusSeasonItemIndex'];
+    final descending = args['focusSeasonDescending'] == true;
+    if (seasonId is! int || page is! int || previousIndex is! int) {
+      SmartDialog.showToast('合集位置已变化，请重新选择视频');
+      return false;
+    }
+
+    var response = await FavHttp.favSeasonList(
+      id: seasonId,
+      pn: page,
+      ps: 20,
+      pageDesc: descending,
+    );
+    if (response case Error()) {
+      response.toast();
+      return false;
+    }
+    var items = response.dataOrNull?.medias ?? [];
+    var index = previousIndex;
+    if (index < 0 || index >= items.length || items[index].bvid != currentBvid) {
+      index = items.indexWhere((item) => item.bvid == currentBvid);
+    }
+    if (index < 0) {
+      SmartDialog.showToast('合集内容已变化，请重新选择视频');
+      return false;
+    }
+    index++;
+    if (index >= items.length) {
+      page += descending ? -1 : 1;
+      final count = response.dataOrNull?.info?.mediaCount;
+      if (page < 1 || (count != null && (page - 1) * 20 >= count)) {
+        return false;
+      }
+      response = await FavHttp.favSeasonList(
+        id: seasonId,
+        pn: page,
+        ps: 20,
+        pageDesc: descending,
+      );
+      if (response case Error()) {
+        response.toast();
+        return false;
+      }
+      items = response.dataOrNull?.medias ?? [];
+      index = 0;
+    }
+    if (items.isEmpty) return false;
+    final item = items[index];
+    if (item.bvid == null || item.bvid!.isEmpty) {
+      SmartDialog.showToast('下一条视频不可用');
+      return false;
+    }
+    if (isClosed || bvid != currentBvid) return false;
+    final played = await onChangeEpisode(
+      BaseEpisodeItem(
+        bvid: item.bvid,
+        title: item.title,
+        cover: item.cover,
+      ),
+    );
+    if (played) {
+      args['focusSeasonPage'] = page;
+      args['focusSeasonItemIndex'] = index;
+    } else {
+      SmartDialog.showToast('下一条视频不可用');
+    }
+    return played;
   }
 
   bool playRelated() {

@@ -11,6 +11,7 @@ import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/accounts/account.dart';
 import 'package:PiliPlus/utils/accounts/account_manager/account_mgr.dart';
 import 'package:PiliPlus/utils/global_data.dart';
+import 'package:PiliPlus/utils/focus_policy.dart';
 import 'package:PiliPlus/utils/login_utils.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:PiliPlus/utils/utils.dart';
@@ -222,6 +223,22 @@ class Request {
       ..httpClientAdapter = _enableHttp2
           ? Http2Adapter(connectionManager, fallbackAdapter: h11)
           : h11;
+
+    dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) {
+          if (isFocusBlockedPath(options.uri.path)) {
+            return handler.reject(
+              DioException.requestCancelled(
+                requestOptions: options,
+                reason: 'Disabled in focus mode',
+              ),
+            );
+          }
+          handler.next(options);
+        },
+      ),
+    );
 
     // 先于其他Interceptor
     if (Pref.retryCount != 0) {

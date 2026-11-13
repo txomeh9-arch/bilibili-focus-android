@@ -12,6 +12,39 @@ bool isFocusFeedPost({
 PlayRepeat focusPlayMode(PlayRepeat mode) =>
     mode == PlayRepeat.listOrder ? PlayRepeat.listOrder : PlayRepeat.pause;
 
+/// Disallow dedicated discovery endpoints, including after settings imports.
+bool isFocusBlockedPath(String path) => const {
+  '/x/v2/feed/index',
+  '/x/web-interface/wbi/index/top/feed/rcmd',
+  '/x/web-interface/archive/related',
+  '/x/web-interface/popular',
+  '/main/hotword',
+  '/x/web-interface/wbi/search/default',
+  '/x/web-interface/suggest',
+  '/x/v2/search/trending/ranking',
+  '/x/v2/search/recommend',
+}.contains(path);
+
+/// Translate an item in the displayed subscription order to its API page.
+({int page, int index})? focusSeasonPosition({
+  required int itemIndex,
+  required int count,
+  required int pageSize,
+  required bool descending,
+}) {
+  if (itemIndex < 0 || itemIndex >= count || pageSize <= 0) return null;
+  if (!descending) {
+    return (page: itemIndex ~/ pageSize + 1, index: itemIndex % pageSize);
+  }
+  final pages = (count + pageSize - 1) ~/ pageSize;
+  final firstPageLength = count - (pages - 1) * pageSize;
+  if (itemIndex < firstPageLength) {
+    return (page: pages, index: itemIndex);
+  }
+  final remaining = itemIndex - firstPageLength;
+  return (page: pages - 1 - remaining ~/ pageSize, index: remaining % pageSize);
+}
+
 /// Return a search term for a direct Bilibili video link, if it is one.
 String? focusVideoSearchTerm(Uri uri) {
   final host = uri.host.toLowerCase();
