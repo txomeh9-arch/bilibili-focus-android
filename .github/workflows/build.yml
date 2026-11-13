@@ -80,11 +80,38 @@ jobs:
             printf 'keyAlias=%s\n' "$KEY_ALIAS"
             printf 'keyPassword=%s\n' "$KEY_PASSWORD"
           } > android/key.properties
+          [[ $(wc -l < android/key.properties) -eq 4 ]]
+          keytool -list -keystore android/app/focus.p12 -storetype PKCS12 \
+            -storepass:env KEYSTORE_PASSWORD -alias "$KEY_ALIAS" >/dev/null
       - name: Generate version metadata
         shell: pwsh
         run: lib/scripts/build.ps1 android
       - name: Build signed APKs
         run: flutter build apk --release --split-per-abi --dart-define-from-file=pili_release.json --build-number "$GITHUB_RUN_NUMBER" --no-pub
+      - name: Apply the fixed APK signature
+        shell: bash
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          build_tools=$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)
+          shopt -s nullglob
+          apks=(build/app/outputs/flutter-apk/app-*-release.apk)
+          [[ ${#apks[@]} -eq 3 ]]
+          for apk in "${apks[@]}"; do
+            "$build_tools/apksigner" sign --ks android/app/focus.p12 \
+              --ks-type PKCS12 --ks-key-alias "$KEY_ALIAS" \
+              --ks-pass env:KEYSTORE_PASSWORD --key-pass env:KEY_PASSWORD "$apk"
+          done
+      - name: Preserve APKs for diagnosis
+        uses: actions/upload-artifact@v7
+        with:
+          name: unverified-diagnostic-apks-${{ github.run_number }}
+          retention-days: 1
+          if-no-files-found: error
+          path: build/app/outputs/flutter-apk/app-*-release.apk
       - name: Verify APK signature and package
         shell: bash
         env:
@@ -94,13 +121,28 @@ jobs:
           build_tools=$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)
           shopt -s nullglob
           apks=(build/app/outputs/flutter-apk/app-*-release.apk)
-          [[ ${#apks[@]} -eq 3 ]]
+          if [[ ${#apks[@]} -ne 3 ]]; then
+            echo "Expected three APKs, found ${#apks[@]}." >&2
+            exit 1
+          fi
           for apk in "${apks[@]}"; do
-            signature=$("$build_tools/apksigner" verify --print-certs "$apk")
+            echo "Verifying $apk"
+            if ! signature=$("$build_tools/apksigner" verify --verbose --print-certs "$apk" 2>&1); then
+              printf '%s\n' "$signature" >&2
+              exit 1
+            fi
+            printf '%s\n' "$signature"
             actual=$(printf '%s\n' "$signature" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')
-            [[ "${actual,,}" == "${EXPECTED_CERT_SHA256,,}" ]]
+            if [[ -z "$actual" || "${actual,,}" != "${EXPECTED_CERT_SHA256,,}" ]]; then
+              echo 'APK signing certificate does not match the configured key.' >&2
+              exit 1
+            fi
             badging=$("$build_tools/aapt" dump badging "$apk")
-            [[ "$badging" == *"package: name='io.github.txomeh9.bilifocus'"* ]]
+            if [[ "$badging" != *"package: name='io.github.txomeh9.bilifocus'"* ]]; then
+              echo 'APK package name does not match the expected application ID.' >&2
+              printf '%s\n' "$badging" | head -n 1 >&2
+              exit 1
+            fi
           done
           (cd build/app/outputs/flutter-apk && sha256sum app-*-release.apk > SHA256SUMS)
       - name: Upload signed APKs
