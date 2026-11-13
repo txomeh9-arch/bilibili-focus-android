@@ -3,11 +3,16 @@ import 'package:PiliPlus/http/loading_state.dart';
 import 'package:PiliPlus/models_new/fav/fav_folder/data.dart';
 import 'package:PiliPlus/models_new/fav/fav_folder/list.dart';
 import 'package:PiliPlus/pages/common/common_list_controller.dart';
+import 'package:PiliPlus/services/account_service.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/accounts/account.dart';
 
-class FavController extends CommonListController<FavFolderData, FavFolderInfo> {
+class FavController extends CommonListController<FavFolderData, FavFolderInfo>
+    with AccountMixin {
   Account get account => Accounts.main;
+
+  @override
+  void onChangeAccount(bool isLogin) => onReload();
 
   @override
   void onInit() {
