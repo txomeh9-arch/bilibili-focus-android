@@ -768,7 +768,9 @@ class UgcIntroController extends CommonIntroController with ReloadMixin {
     }
     var items = response.dataOrNull?.medias ?? [];
     var index = previousIndex;
-    if (index < 0 || index >= items.length || items[index].bvid != currentBvid) {
+    if (index < 0 ||
+        index >= items.length ||
+        items[index].bvid != currentBvid) {
       index = items.indexWhere((item) => item.bvid == currentBvid);
     }
     if (index < 0) {
@@ -801,10 +803,20 @@ class UgcIntroController extends CommonIntroController with ReloadMixin {
       SmartDialog.showToast('下一条视频不可用');
       return false;
     }
-    if (isClosed || bvid != currentBvid) return false;
+    final nextVideo = await SearchHttp.ab2cWithDimension(bvid: item.bvid);
+    if (nextVideo?.cid == null) {
+      SmartDialog.showToast('下一条视频不可用');
+      return false;
+    }
+    if (isClosed ||
+        bvid != currentBvid ||
+        videoDetailCtr.plPlayerController.playRepeat != PlayRepeat.listOrder) {
+      return false;
+    }
     final played = await onChangeEpisode(
       BaseEpisodeItem(
         bvid: item.bvid,
+        cid: nextVideo!.cid,
         title: item.title,
         cover: item.cover,
       ),

@@ -81,9 +81,10 @@ jobs:
             signature=$("$build_tools/apksigner" verify --print-certs "$apk")
             actual=$(printf '%s\n' "$signature" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')
             [[ "${actual,,}" == "${EXPECTED_CERT_SHA256,,}" ]]
-            "$build_tools/aapt" dump badging "$apk" | grep -q "package: name='io.github.txomeh9.bilifocus'"
+            badging=$("$build_tools/aapt" dump badging "$apk")
+            [[ "$badging" == *"package: name='io.github.txomeh9.bilifocus'"* ]]
           done
-          sha256sum "${apks[@]}" > build/app/outputs/flutter-apk/SHA256SUMS
+          (cd build/app/outputs/flutter-apk && sha256sum app-*-release.apk > SHA256SUMS)
       - name: Upload signed APKs
         uses: actions/upload-artifact@v7
         with:
