@@ -4,9 +4,16 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      artifact_run_id:
+        description: 'Optional previous build run ID: verify and publish its retained APKs'
+        type: string
+        required: false
+        default: ''
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   android:
@@ -17,6 +24,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Free space on the temporary GitHub runner
+        if: ${{ !inputs.artifact_run_id }}
         shell: bash
         run: |
           set -euo pipefail
@@ -41,22 +49,28 @@ jobs:
             android/*.gradle*
             android/**/gradle-wrapper.properties
       - uses: subosito/flutter-action@v2
+        if: ${{ !inputs.artifact_run_id }}
         with:
           channel: stable
           flutter-version-file: pubspec.yaml
           cache: true
       - name: Install Linux dependencies for Flutter tests
+        if: ${{ !inputs.artifact_run_id }}
         run: |
           sudo apt-get update
           sudo apt-get install -y libgtk-3-dev libx11-dev libxi-dev pkg-config
       - name: Apply upstream Android patches and resolve dependencies
+        if: ${{ !inputs.artifact_run_id }}
         shell: pwsh
         run: lib/scripts/patch.ps1 android
       - name: Analyze application
+        if: ${{ !inputs.artifact_run_id }}
         run: flutter analyze --no-pub --no-fatal-infos --no-fatal-warnings lib
       - name: Run focus policy tests
+        if: ${{ !inputs.artifact_run_id }}
         run: flutter test test/focus_policy_test.dart
       - name: Configure release signing
+        if: ${{ !inputs.artifact_run_id }}
         shell: bash
         env:
           SIGN_KEYSTORE_BASE64: ${{ secrets.SIGN_KEYSTORE_BASE64 }}
@@ -84,11 +98,14 @@ jobs:
           keytool -list -keystore android/app/focus.p12 -storetype PKCS12 \
             -storepass:env KEYSTORE_PASSWORD -alias "$KEY_ALIAS" >/dev/null
       - name: Generate version metadata
+        if: ${{ !inputs.artifact_run_id }}
         shell: pwsh
         run: lib/scripts/build.ps1 android
       - name: Build signed APKs
+        if: ${{ !inputs.artifact_run_id }}
         run: flutter build apk --release --split-per-abi --dart-define-from-file=pili_release.json --build-number "$GITHUB_RUN_NUMBER" --no-pub
       - name: Apply the fixed APK signature
+        if: ${{ !inputs.artifact_run_id }}
         shell: bash
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
@@ -106,12 +123,35 @@ jobs:
               --ks-pass env:KEYSTORE_PASSWORD --key-pass env:KEY_PASSWORD "$apk"
           done
       - name: Preserve APKs for diagnosis
+        if: ${{ !inputs.artifact_run_id }}
         uses: actions/upload-artifact@v7
         with:
           name: unverified-diagnostic-apks-${{ github.run_number }}
           retention-days: 1
           if-no-files-found: error
           path: build/app/outputs/flutter-apk/app-*-release.apk
+      - name: Restore previously compiled APKs
+        if: ${{ inputs.artifact_run_id }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN_ID: ${{ inputs.artifact_run_id }}
+        run: |
+          set -euo pipefail
+          [[ "$SOURCE_RUN_ID" =~ ^[0-9]+$ ]]
+          metadata=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN_ID")
+          [[ $(jq -r '.path' <<< "$metadata") == '.github/workflows/build.yml' ]]
+          [[ $(jq -r '.status' <<< "$metadata") == 'completed' ]]
+          source_number=$(jq -r '.run_number' <<< "$metadata")
+          source_sha=$(jq -r '.head_sha' <<< "$metadata")
+          gh run download "$SOURCE_RUN_ID" --repo "$GITHUB_REPOSITORY" \
+            --name "unverified-diagnostic-apks-$source_number" \
+            --dir build/app/outputs/flutter-apk
+          printf 'Verifying APKs compiled from %s in run %s\n' "$source_sha" "$SOURCE_RUN_ID"
+          printf 'APKs compiled from commit `%s` in [run %s](%s).\n' \
+            "$source_sha" "$SOURCE_RUN_ID" "$(jq -r '.html_url' <<< "$metadata")" >> "$GITHUB_STEP_SUMMARY"
+          printf '%s\n' "$metadata" | jq '{source_commit: .head_sha, source_run: .html_url}' \
+            > build/app/outputs/flutter-apk/BUILD_SOURCE.json
       - name: Verify APK signature and package
         shell: bash
         env:
@@ -132,7 +172,7 @@ jobs:
               exit 1
             fi
             printf '%s\n' "$signature"
-            actual=$(printf '%s\n' "$signature" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')
+            actual=$(printf '%s\n' "$signature" | sed -nE 's/^.*certificate SHA-256 digest: ([[:xdigit:]]{64})[[:space:]]*$/\1/p' | tr '[:upper:]' '[:lower:]' | sort -u)
             if [[ -z "$actual" || "${actual,,}" != "${EXPECTED_CERT_SHA256,,}" ]]; then
               echo 'APK signing certificate does not match the configured key.' >&2
               exit 1
@@ -144,6 +184,11 @@ jobs:
               exit 1
             fi
           done
+          if [[ ! -f build/app/outputs/flutter-apk/BUILD_SOURCE.json ]]; then
+            jq -n --arg sha "$GITHUB_SHA" \
+              --arg url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+              '{source_commit: $sha, source_run: $url}' > build/app/outputs/flutter-apk/BUILD_SOURCE.json
+          fi
           (cd build/app/outputs/flutter-apk && sha256sum app-*-release.apk > SHA256SUMS)
       - name: Upload signed APKs
         uses: actions/upload-artifact@v7
@@ -154,3 +199,4 @@ jobs:
           path: |
             build/app/outputs/flutter-apk/app-*-release.apk
             build/app/outputs/flutter-apk/SHA256SUMS
+            build/app/outputs/flutter-apk/BUILD_SOURCE.json
