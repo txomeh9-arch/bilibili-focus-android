@@ -93,6 +93,12 @@ Future<void> _initAppPath() async {
 
 void main() async {
   ScaledWidgetsFlutterBinding.ensureInitialized();
+  LicenseRegistry.addLicense(() async* {
+    yield LicenseEntryWithLineBreaks(
+      const ['哔哩专注 / Bilibili Focus', 'PiliPlus'],
+      await rootBundle.loadString('LICENSE'),
+    );
+  });
   MediaKit.ensureInitialized();
   await _initAppPath();
   try {

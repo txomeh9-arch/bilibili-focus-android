@@ -1,6 +1,7 @@
 import 'package:PiliPlus/models/common/dynamic/dynamics_type.dart';
 import 'package:PiliPlus/pages/dynamics_tab/view.dart';
 import 'package:PiliPlus/pages/fav/view.dart';
+import 'package:PiliPlus/pages/main/about.dart';
 import 'package:PiliPlus/pages/main/controller.dart';
 import 'package:PiliPlus/pages/search/view.dart';
 import 'package:PiliPlus/pages/subscription/view.dart';
@@ -65,6 +66,11 @@ class _MainAppState extends State<MainApp> {
           title: const Text('关注'),
           actions: [
             IconButton(
+              tooltip: '观看历史',
+              onPressed: () => Get.toNamed('/history'),
+              icon: const Icon(Icons.history),
+            ),
+            IconButton(
               tooltip: '设置',
               onPressed: () => Get.to(() => const FocusSettingsPage()),
               icon: const Icon(Icons.settings_outlined),
@@ -109,6 +115,12 @@ class _FocusSettingsPageState extends State<FocusSettingsPage> {
     appBar: AppBar(title: const Text('设置')),
     body: ListView(
       children: [
+        ListTile(
+          leading: const Icon(Icons.history),
+          title: const Text('观看历史'),
+          subtitle: const Text('查看、搜索与继续播放已看内容'),
+          onTap: () => Get.toNamed('/history'),
+        ),
         SwitchListTile(
           title: const Text('连续播放'),
           subtitle: const Text('仅播放当前分 P、合集或收藏夹中的下一条'),
@@ -123,6 +135,12 @@ class _FocusSettingsPageState extends State<FocusSettingsPage> {
               GStorage.video.put(VideoBoxKey.playRepeat, mode.index);
             }
           },
+        ),
+        ListTile(
+          leading: const Icon(Icons.info_outline),
+          title: const Text('关于与开源许可'),
+          subtitle: const Text('项目来源、源码与 GNU GPL v3.0 协议'),
+          onTap: () => Get.to(() => const FocusAboutPage()),
         ),
         ListTile(
           leading: const Icon(Icons.logout),
