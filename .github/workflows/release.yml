@@ -1,0 +1,98 @@
+name: Publish Android Release
+
+on:
+  workflow_run:
+    workflows: [Build Android]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: 'Successful Build Android run ID to publish'
+        type: string
+        required: true
+
+permissions:
+  actions: read
+  contents: write
+
+concurrency:
+  group: android-release-${{ inputs.run_id || github.event.workflow_run.id }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SOURCE_RUN_ID: ${{ inputs.run_id || github.event.workflow_run.id }}
+    steps:
+      - name: Download and check verified build artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$SOURCE_RUN_ID" =~ ^[0-9]+$ ]]
+          metadata=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN_ID")
+          [[ $(jq -r '.path' <<< "$metadata") == '.github/workflows/build.yml' ]]
+          [[ $(jq -r '.conclusion' <<< "$metadata") == 'success' ]]
+          [[ $(jq -r '.head_branch' <<< "$metadata") == 'main' ]]
+          [[ $(jq -r '.head_repository.full_name' <<< "$metadata") == "$GITHUB_REPOSITORY" ]]
+          number=$(jq -r '.run_number' <<< "$metadata")
+          [[ "$number" =~ ^[0-9]+$ ]]
+          gh run download "$SOURCE_RUN_ID" --repo "$GITHUB_REPOSITORY" \
+            --name "bilibili-focus-android-$number" --dir release
+          for arch in arm64-v8a armeabi-v7a x86_64; do
+            test -s "release/app-$arch-release.apk"
+          done
+          (cd release && sha256sum -c SHA256SUMS)
+          source_sha=$(jq -r '.source_commit' release/BUILD_SOURCE.json)
+          [[ "$source_sha" =~ ^[0-9a-f]{40}$ ]]
+          gh api "repos/$GITHUB_REPOSITORY/contents/LICENSE?ref=$source_sha" \
+            --jq '.content' | base64 --decode > release/LICENSE
+          gh api "repos/$GITHUB_REPOSITORY/contents/NOTICE.md?ref=$source_sha" \
+            --jq '.content' | base64 --decode > release/NOTICE.md
+          test -s release/LICENSE
+          test -s release/NOTICE.md
+          printf 'RELEASE_TAG=focus-build-%s\nSOURCE_SHA=%s\nBUILD_NUMBER=%s\n' \
+            "$number" "$source_sha" "$number" >> "$GITHUB_ENV"
+      - name: Publish APKs and source attribution
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > release-notes.md <<'NOTES'
+          登录后可主动访问关注投稿、订阅、收藏和搜索内容；观看历史入口位于首页右上角和设置中。应用移除了推荐视频、热搜和消息红点，默认播完暂停。
+
+          安装请选择对应架构：
+          - `app-arm64-v8a-release.apk`：大多数安卓手机。
+          - `app-armeabi-v7a-release.apk`：32 位 ARM 设备。
+          - `app-x86_64-release.apk`：x86_64 安卓设备或模拟器。
+
+          安装包由 GitHub Actions 编译，已通过签名和应用包名校验。下载后可使用 `SHA256SUMS` 核对文件完整性，`BUILD_SOURCE.json` 记录对应源码与原始构建。尚未完成真机验证。
+
+          本项目基于 [PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus) 2.2.0.2 修改，保留 [PiliPalaX](https://github.com/orz12/PiliPalaX) 与 [PiliPala](https://github.com/guozhigq/pilipala) 的来源说明，按 **GNU GPL v3.0** 开源。完整协议与修改声明见附件 `LICENSE` 和 `NOTICE.md`，原作者及贡献者保留各自版权。
+          NOTES
+          printf '\n对应源码：[%s](https://github.com/%s/tree/%s)\n\n构建及校验：[运行记录](https://github.com/%s/actions/runs/%s)\n' \
+            "$SOURCE_SHA" "$GITHUB_REPOSITORY" "$SOURCE_SHA" \
+            "$GITHUB_REPOSITORY" "$SOURCE_RUN_ID" >> release-notes.md
+          assets=(release/app-*-release.apk release/SHA256SUMS \
+            release/BUILD_SOURCE.json release/LICENSE release/NOTICE.md)
+          if existing=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" 2>/dev/null); then
+            [[ $(jq -r '.target_commitish' <<< "$existing") == "$SOURCE_SHA" ]]
+            gh release upload "$RELEASE_TAG" "${assets[@]}" \
+              --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$RELEASE_TAG" "${assets[@]}" \
+              --repo "$GITHUB_REPOSITORY" --target "$SOURCE_SHA" \
+              --title "哔哩专注 · build $BUILD_NUMBER" \
+              --notes-file release-notes.md --draft
+          fi
+          gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
+            --title "哔哩专注 · build $BUILD_NUMBER" \
+            --notes-file release-notes.md --draft=false
+          printf '[下载哔哩专注 build %s](https://github.com/%s/releases/tag/%s)\n' \
+            "$BUILD_NUMBER" "$GITHUB_REPOSITORY" "$RELEASE_TAG" >> "$GITHUB_STEP_SUMMARY"

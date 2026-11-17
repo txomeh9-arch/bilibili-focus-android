@@ -1,5 +1,7 @@
 # 哔哩专注
 
+[下载最新安装包](https://github.com/txomeh9-arch/bilibili-focus-android/releases/latest)
+
 Android 专注客户端，基于 [PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus) [2.2.0.2](https://github.com/bggRGjQaUbCoE/PiliPlus/tree/2.2.0.2) 修改，按 **[GNU General Public License v3.0（GPL-3.0）](LICENSE)** 开源。
 
 本项目与哔哩哔哩和上游项目无官方关联。
